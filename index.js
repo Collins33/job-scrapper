@@ -1,7 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
-const arrayDiff = require("fast-array-diff");
-
+const fastArrayDiff = require("fast-array-diff");
+const fs = require("fs");
 // retrieve our html
 axios
   .get("https://boards.greenhouse.io/andela")
@@ -30,7 +30,40 @@ axios
         return { name, link, location };
       })
       .toArray();
-    console.log(jobs);
+
+    // check if the file exists and read it
+    if (fs.existsSync("andela-jobs.json")) {
+      const oldJson = fs.readFileSync("andela-jobs.json", "utf8");
+      const oldJobs = JSON.parse(oldJson);
+      // find difference btwn old jobs and new jobs
+      const differencetInJobs = fastArrayDiff.diff(oldJobs, jobs, (a, b) => {
+        return (
+          a.name === b.name && a.link === b.link && a.location === b.location
+        );
+      });
+
+      // check if anything was added
+      if (differencetInJobs.added.length > 0) {
+        console.log("=====ADDED JOBS======");
+        differencetInJobs.added.forEach(item => {
+          console.log(item);
+        });
+      }
+
+      // Check if anything was removed
+      if (differencetInJobs.removed.length > 0) {
+        console.log("=====REMOVED JOBS======");
+        differencetInJobs.removed.forEach(item => {
+          console.log(item);
+        });
+      }
+    } else {
+      // if the file does not exist
+      jobs.forEach(job => {
+        console.log(job);
+      });
+    }
+    fs.writeFileSync("andela-jobs.json", JSON.stringify(jobs, null, 2));
   })
   .catch(err => {
     console.error(err);
